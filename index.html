@@ -52,6 +52,12 @@
 <tr><td>Draw diagonally:</td><td><input type="checkbox" name="dense_diagonal"></td></tr>
 <tr><td name="stepover_txt">Surfacing stepover:</td><td><input type="text" name="stepover" value="12", size="6"> mm</td></tr>
 <tr><td>Cutting direction:</td><td><input type="text" name="direction" value="E", size="6"> (N, S, E, or W)</td></tr>
+<tr><td>Row progression:</td><td>
+<select name="row_progression">
+<option value="normal" selected>Normal (Back to Front for E/W)</option>
+<option value="reverse">Reverse (Front to Back for E/W)</option>
+</select>
+</td></tr>
 <tr><td>Perimeter:</td><td><input type="checkbox" name="perimeter"></td></tr>
 <tr><td>Orientation:</td><td><input type="text" name="orientation" value="X", size="6"> (X or Y)</td></tr>
 <tr><td>Pattern count:</td><td><input type="text" name="hog_count" value="1", size="6"></td></tr>
@@ -284,11 +290,13 @@ Questions, suggestions, feature requests are welcome.
     
     if (mode == "surfacing") {
       $("input[name=direction]").parent().parent().show();
+      $("select[name=row_progression]").parent().parent().show();
       $("input[name=perimeter]").parent().parent().show();
       $("div[id=surfacing_desc]").show();
     }
     else {
       $("input[name=direction]").parent().parent().hide();
+      $("select[name=row_progression]").parent().parent().hide();
       $("input[name=perimeter]").parent().parent().hide();
       $("div[id=surfacing_desc]").hide();
     }
@@ -557,39 +565,59 @@ Questions, suggestions, feature requests are welcome.
       output_append("G0 " + zup + " F" + vertical);  // raise to zup
   }
   
-  function surfacing(xmin, ymin, xmax, ymax, stepover, direction, zup, zdn, rapid, vertical, drawspeed) {
+  function surfacing(xmin, ymin, xmax, ymax, stepover, direction, row_progression, zup, zdn, rapid, vertical, drawspeed) {
     var strokestart, strokeend, rowstart, rowend, horiz;
     // orient so that we're always climb milling.  This should reduce the tilting of the router instead of increasing it.
     if (direction == "E"){
-      // left to right, top to bottom
+      // left to right, top to bottom (or bottom to top if reversed)
       strokestart = xmin;
       strokeend = xmax;
-      rowstart = ymax;
-      rowend = ymin;
+      if (row_progression == "reverse") {
+        rowstart = ymin;
+        rowend = ymax;
+      } else {
+        rowstart = ymax;
+        rowend = ymin;
+      }
       horiz = true;
     }
     else if (direction == "W") {
-      // right to left, bottom to top
+      // right to left, bottom to top (or top to bottom if reversed)
       strokestart = xmax;
       strokeend = xmin;
-      rowstart = ymin;
-      rowend = ymax;
+      if (row_progression == "reverse") {
+        rowstart = ymax;
+        rowend = ymin;
+      } else {
+        rowstart = ymin;
+        rowend = ymax;
+      }
       horiz = true;
     }
     else if (direction == "N") {
-      // bottom to top, left to right
+      // bottom to top, left to right (or right to left if reversed)
       strokestart = ymin;
       strokeend = ymax;
-      rowstart = xmin;
-      rowend = xmax;
+      if (row_progression == "reverse") {
+        rowstart = xmax;
+        rowend = xmin;
+      } else {
+        rowstart = xmin;
+        rowend = xmax;
+      }
       horiz = false;
     }
     else if (direction == "S") {
-      // top to bottom, right to left
+      // top to bottom, right to left (or left to right if reversed)
       strokestart = ymax;
       strokeend = ymin;
-      rowstart = xmax;
-      rowend = xmin;
+      if (row_progression == "reverse") {
+        rowstart = xmin;
+        rowend = xmax;
+      } else {
+        rowstart = xmax;
+        rowend = xmin;
+      }
       horiz = false;
     }
     else {
@@ -848,6 +876,7 @@ Questions, suggestions, feature requests are welcome.
     var textlines = $("textarea[name=text_input]").val().split('\n');
     var stepover = parseFloat($("input[name=stepover]").val());
     var direction = $("input[name=direction]").val();
+    var row_progression = $("select[name=row_progression]").val();
     var perimeter = $("input[name=perimeter]").prop('checked');
     var orientation = $("input[name=orientation]").val();
     var hog_count = parseFloat($("input[name=hog_count]").val());
@@ -921,6 +950,7 @@ Questions, suggestions, feature requests are welcome.
     if (mode == "surfacing") {
       output_append("; stepover: " + stepover + " mm");
       output_append("; direction: " + direction);
+      output_append("; row progression: " + row_progression);
       output_append("; perimeter: " + perimeter);
     }
     
@@ -1067,14 +1097,14 @@ Questions, suggestions, feature requests are welcome.
         surfacing_perim(xsize, ysize, stepover, direction, zup, zdn, rapid, vertical, drawspeed);
         // surfacing a slightly smaller box saves four strokes that have already been completed
         if (direction == "E" || direction == "W") {
-          surfacing(0, 2*stepover, xsize, ysize-2*stepover, stepover, direction, zup, zdn, rapid, vertical, drawspeed);
+          surfacing(0, 2*stepover, xsize, ysize-2*stepover, stepover, direction, row_progression, zup, zdn, rapid, vertical, drawspeed);
         }
         else {
-          surfacing(2*stepover, 0, xsize-2*stepover, ysize, stepover, direction, zup, zdn, rapid, vertical, drawspeed);
+          surfacing(2*stepover, 0, xsize-2*stepover, ysize, stepover, direction, row_progression, zup, zdn, rapid, vertical, drawspeed);
         }
       }
       else {
-        surfacing(0, 0, xsize, ysize, stepover, direction, zup, zdn, rapid, vertical, drawspeed);
+        surfacing(0, 0, xsize, ysize, stepover, direction, row_progression, zup, zdn, rapid, vertical, drawspeed);
       }
     }
     
