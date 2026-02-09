@@ -19,6 +19,7 @@
 <input type="radio" name="mode" value="x" checked> X ruler<br>
 <input type="radio" name="mode" value="y"> Y ruler<br>
 <input type="radio" name="mode" value="xy"> X and Y ruler<br>
+<input type="radio" name="mode" value="grid"> Grid<br>
 <input type="radio" name="mode" value="perim"> Perimeter ruler<br>
 <input type="radio" name="mode" value="squareness"> Squareness marks<br>
 <input type="radio" name="mode" value="ztest_corners"> Z test four corners<br>
@@ -46,6 +47,7 @@
 <!-- <tr><td>Segment Length:</td><td><input type="text" name="accel_segment" value="20", size="6"> mm</td></tr>
 <tr><td>Corner Radius:</td><td><input type="text" name="accel_corner" value="0", size="6"> mm</td></tr> -->
 <tr><td>Z Test Cross Size:</td><td><input type="text" name="zxsize" value="14", size="6"> mm</td></tr>
+<tr><td>Grid cell size:</td><td><input type="text" name="cell_size" value="10", size="6"> mm</td></tr>
 <tr><td>Dense segments min:</td><td><input type="text" name="dense_minseg" value="0.02", size="6"> mm</td></tr>
 <tr><td>Dense segments max:</td><td><input type="text" name="dense_maxseg" value="0.5", size="6"> mm</td></tr>
 <tr><td>Save bandwidth:</td><td><input type="checkbox" name="dense_efficient"></td></tr>
@@ -82,6 +84,21 @@ X and Y ruler draws both of the above.
 </li><li>
 Perimeter ruler draws four (pairs of) rulers around the perimeter within a rectangle whose dimensions are specified by X extent and Y extent.
 </li></ul>
+</div>
+<div id="grid_desc">
+<h1>Grid Mode</h1>
+<p>Draws a grid pattern from (0,0) to the specified X and Y extents. The grid cell size determines the spacing between grid lines.
+</p><p>
+This mode is useful for:
+<ul>
+<li>Verifying machine accuracy across the entire work area
+<li>Creating alignment grids for positioning workpieces
+<li>Testing for squareness and orthogonality
+<li>Calibrating camera systems or lasers
+</ul>
+</p><p>
+The grid is drawn with vertical lines (parallel to Y axis) followed by horizontal lines (parallel to X axis). All lines span the full extent in their respective directions.
+</p>
 </div>
 <div id="squareness_desc">
 <h1>Squareness Marks</h1>
@@ -220,6 +237,15 @@ Questions, suggestions, feature requests are welcome.
     }
     else {
       $("div[id=ruler_desc]").hide();
+    }
+    
+    if (mode == "grid") {
+      $("input[name=cell_size]").parent().parent().show();
+      $("div[id=grid_desc]").show();
+    }
+    else {
+      $("input[name=cell_size]").parent().parent().hide();
+      $("div[id=grid_desc]").hide();
     }
     
     if (mode == "squareness") {
@@ -849,6 +875,24 @@ Questions, suggestions, feature requests are welcome.
     output_append("G0" + zup + " F" + vertical);
   }
   
+  function draw_grid(xmin, ymin, xmax, ymax, cell_size, zup, zdn, rapid, vertical, drawspeed) {
+    // Draw vertical lines (parallel to Y axis)
+    for (var x = xmin; x <= xmax; x += cell_size) {
+      output_append("G0 X" + x.toFixed(3) + " Y" + ymin.toFixed(3) + zup + " F" + rapid);
+      output_append("G1" + zdn + " F" + vertical);
+      output_append("G1 X" + x.toFixed(3) + " Y" + ymax.toFixed(3) + zdn + " F" + drawspeed);
+      output_append("G0" + zup + " F" + vertical);
+    }
+    
+    // Draw horizontal lines (parallel to X axis)
+    for (var y = ymin; y <= ymax; y += cell_size) {
+      output_append("G0 X" + xmin.toFixed(3) + " Y" + y.toFixed(3) + zup + " F" + rapid);
+      output_append("G1" + zdn + " F" + vertical);
+      output_append("G1 X" + xmax.toFixed(3) + " Y" + y.toFixed(3) + zdn + " F" + drawspeed);
+      output_append("G0" + zup + " F" + vertical);
+    }
+  }
+  
   function generate() {
     // clear output in case it's been run already:
     document.getElementById('output').innerHTML = "";
@@ -862,6 +906,7 @@ Questions, suggestions, feature requests are welcome.
     var ysize = parseFloat($("input[name=ysize]").val());
     var xsize = parseFloat($("input[name=xsize]").val());
     var zxsize = parseFloat($("input[name=zxsize]").val());
+    var cell_size = parseFloat($("input[name=cell_size]").val());
     //var accel_segment = parseFloat($("input[name=accel_segment]").val());
     //var accel_corner = parseFloat($("input[name=accel_corner]").val());
     var accel_tests = parseFloat($("input[name=accel_tests]").val());
@@ -914,6 +959,10 @@ Questions, suggestions, feature requests are welcome.
       output_append("; z height of cut: " + pen_d);
       output_append("; clearance z height: " + pen_u);
       output_append("; cutting feedrate: " + drawspeed + " mm/min");
+    }
+    
+    if (mode == "grid") {
+      output_append("; cell size: " + cell_size + " mm");
     }
     
     if (mode == "squareness") {
@@ -975,6 +1024,10 @@ Questions, suggestions, feature requests are welcome.
     if (mode == "y" || mode == "xy" || mode == "perim") {
       y_zig(10, 0, ysize, zup, zdn, rapid, vertical, drawspeed);
       y_zag(10, 0, ysize, zup, zdn, rapid, vertical, drawspeed);
+    }
+    
+    if (mode == "grid") {
+      draw_grid(0, 0, xsize, ysize, cell_size, zup, zdn, rapid, vertical, drawspeed);
     }
     
     if (mode == "perim") {
