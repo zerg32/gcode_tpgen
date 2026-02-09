@@ -32,6 +32,8 @@
 <input type="radio" name="mode" value="hog"> Hog-Out
 </td></tr>
 <tr><td>Start with G92 X0 Y0 Z0:</td><td><input type="checkbox" name="zero" checked></td></tr>
+<tr><td>Laser mode:</td><td><input type="checkbox" name="laser_mode" onchange="update_laser_ui()"></td></tr>
+<tr><td>Laser power (S value):</td><td><input type="text" name="laser_power" value="200", size="6"> (0-1000)</td></tr>
 <tr><td name="z_pen_down_txt">Z level for pen-down:</td><td><input type="text" name="pen_d" value="-0.5", size="6"> mm</td></tr>
 <tr><td name="z_clearance_txt">Z level for pen-up:</td><td><input type="text" name="pen_u" value="0.5", size="6"> mm</td></tr>
 <tr><td>Rapid Feedrate:</td><td><input type="text" name="rapid" value="2000", size="6"> mm/min</td></tr>
@@ -227,6 +229,24 @@ Questions, suggestions, feature requests are welcome.
   $("input[name=mode]").click(function () { show_options($(this).val()); });
 
   show_options($("input[name=mode]:checked").val());
+  
+  function update_laser_ui() {
+    var laser_mode = $("input[name=laser_mode]").prop('checked');
+    if (laser_mode) {
+      $("input[name=laser_power]").parent().parent().show();
+      $("input[name=pen_d]").parent().parent().hide();
+      $("input[name=pen_u]").parent().parent().hide();
+      $("input[name=vertical]").parent().parent().hide();
+    } else {
+      $("input[name=laser_power]").parent().parent().hide();
+      $("input[name=pen_d]").parent().parent().show();
+      $("input[name=pen_u]").parent().parent().show();
+      $("input[name=vertical]").parent().parent().show();
+    }
+  }
+  
+  // Initialize laser UI on page load
+  update_laser_ui();
   
   function show_options (mode) {
     // var mode = $(this).val();
@@ -425,7 +445,8 @@ Questions, suggestions, feature requests are welcome.
     output_append("G0" + zup + " F" + vertical);
   }
   
-  function x_zig(xstart, xend, ymid, zup, zdn, rapid, vertical, drawspeed) {
+  function x_zig(xstart, xend, ymid, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off) {
+    laser_mode = laser_mode || false;
     for (var x=xstart; x <= xend; x++) {
       var yend = ymid-0.5;
       var ystart = yend-5.5;  // most draw from ymid-5.5 to ymid-0.5
@@ -435,14 +456,22 @@ Questions, suggestions, feature requests are welcome.
       if (x % 10 == 0) {
         ystart = ystart - 2;
       }
-      output_append("G0 X" + x + " Y" + ystart + zup + " F" + rapid);
-      output_append("G1 X" + x + " Y" + ystart + zdn + " F" + vertical);
-      output_append("G1 X" + x + " Y" + yend + zdn + " F" + drawspeed);
-      output_append("G0 X" + x + " Y" + yend + zup + " F" + vertical);
+      if (laser_mode) {
+        output_append("G0 X" + x + " Y" + ystart + " F" + rapid);
+        output_append(laser_on);
+        output_append("G1 X" + x + " Y" + yend + " F" + drawspeed);
+        output_append(laser_off);
+      } else {
+        output_append("G0 X" + x + " Y" + ystart + zup + " F" + rapid);
+        output_append("G1 X" + x + " Y" + ystart + zdn + " F" + vertical);
+        output_append("G1 X" + x + " Y" + yend + zdn + " F" + drawspeed);
+        output_append("G0 X" + x + " Y" + yend + zup + " F" + vertical);
+      }
     }
   }
   
-  function x_zag(xstart, xend, ymid, zup, zdn, rapid, vertical, drawspeed) {
+  function x_zag(xstart, xend, ymid, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off) {
+    laser_mode = laser_mode || false;
     for (var x=xend; x >= xstart; x--) {
       var ystart = ymid + 0.5;
       var yend = ystart + 5.5; // most go from ymid+0.5 to ymid+6
@@ -452,14 +481,22 @@ Questions, suggestions, feature requests are welcome.
       if (x % 10 == 0) {
         yend = yend + 2;   // 10 mm goes from ymid+0.5 to ymid+10
       }
-      output_append("G0 X" + x + " Y" + ystart + zup + " F" + rapid);
-      output_append("G1 X" + x + " Y" + ystart + zdn + " F" + vertical);
-      output_append("G1 X" + x + " Y" + yend + zdn + " F" + drawspeed);
-      output_append("G0 X" + x + " Y" + yend + zup + " F" + vertical);
+      if (laser_mode) {
+        output_append("G0 X" + x + " Y" + ystart + " F" + rapid);
+        output_append(laser_on);
+        output_append("G1 X" + x + " Y" + yend + " F" + drawspeed);
+        output_append(laser_off);
+      } else {
+        output_append("G0 X" + x + " Y" + ystart + zup + " F" + rapid);
+        output_append("G1 X" + x + " Y" + ystart + zdn + " F" + vertical);
+        output_append("G1 X" + x + " Y" + yend + zdn + " F" + drawspeed);
+        output_append("G0 X" + x + " Y" + yend + zup + " F" + vertical);
+      }
     }
   }
   
-  function y_zig(xmid, ystart, yend, zup, zdn, rapid, vertical, drawspeed) {
+  function y_zig(xmid, ystart, yend, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off) {
+    laser_mode = laser_mode || false;
     for (var y=ystart; y <= yend; y++) {
       var xend = xmid-0.5;
       var xstart = xend-5.5;
@@ -469,14 +506,22 @@ Questions, suggestions, feature requests are welcome.
       if (y % 10 == 0) {
         xstart = xstart - 2;
       }
-      output_append("G0 X" + xstart + " Y" + y + zup + " F" + rapid);
-      output_append("G1 X" + xstart + " Y" + y + zdn + " F" + vertical);
-      output_append("G1 X" + xend + " Y" + y + zdn + " F" + drawspeed);
-      output_append("G0 X" + xend + " Y" + y + zup + " F" + vertical);
+      if (laser_mode) {
+        output_append("G0 X" + xstart + " Y" + y + " F" + rapid);
+        output_append(laser_on);
+        output_append("G1 X" + xend + " Y" + y + " F" + drawspeed);
+        output_append(laser_off);
+      } else {
+        output_append("G0 X" + xstart + " Y" + y + zup + " F" + rapid);
+        output_append("G1 X" + xstart + " Y" + y + zdn + " F" + vertical);
+        output_append("G1 X" + xend + " Y" + y + zdn + " F" + drawspeed);
+        output_append("G0 X" + xend + " Y" + y + zup + " F" + vertical);
+      }
     }
   }
   
-  function y_zag(xmid, ystart, yend, zup, zdn, rapid, vertical, drawspeed) {
+  function y_zag(xmid, ystart, yend, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off) {
+    laser_mode = laser_mode || false;
     for (var y=yend; y >= ystart; y--) {
       var xstart = xmid + 0.5;
       var xend = xstart + 5.5;
@@ -486,10 +531,17 @@ Questions, suggestions, feature requests are welcome.
       if (y % 10 == 0) {
         xend = xend + 2;
       }
-      output_append("G0 X" + xstart + " Y" + y + zup + " F" + rapid);
-      output_append("G1 X" + xstart + " Y" + y + zdn + " F" + vertical);
-      output_append("G1 X" + xend + " Y" + y + zdn + " F" + drawspeed);
-      output_append("G0 X" + xend + " Y" + y + zup + " F" + vertical);
+      if (laser_mode) {
+        output_append("G0 X" + xstart + " Y" + y + " F" + rapid);
+        output_append(laser_on);
+        output_append("G1 X" + xend + " Y" + y + " F" + drawspeed);
+        output_append(laser_off);
+      } else {
+        output_append("G0 X" + xstart + " Y" + y + zup + " F" + rapid);
+        output_append("G1 X" + xstart + " Y" + y + zdn + " F" + vertical);
+        output_append("G1 X" + xend + " Y" + y + zdn + " F" + drawspeed);
+        output_append("G0 X" + xend + " Y" + y + zup + " F" + vertical);
+      }
     }
   }
   
@@ -866,30 +918,53 @@ Questions, suggestions, feature requests are welcome.
     output_append("G0" + zup + " F" + vertical);
   }
   
-  function double_line(sixcoords, zup, zdn, vertical, rapid, drawspeed) {
-    // expects to already be raised.  move to first point
+  function double_line(sixcoords, zup, zdn, vertical, rapid, drawspeed, laser_mode, laser_on, laser_off) {
+    laser_mode = laser_mode || false;
+    // expects to already be raised or laser off. move to first point
     output_append("G0 X" + sixcoords[0] + " Y" + sixcoords[1] + " F" + rapid);
-    output_append("G1" + zdn + " F" + vertical);
-    output_append("G1 X" + sixcoords[2] + " Y" + sixcoords[3] + " F" + drawspeed);
-    output_append("G1 X" + sixcoords[4] + " Y" + sixcoords[5] + " F" + drawspeed);
-    output_append("G0" + zup + " F" + vertical);
+    if (laser_mode) {
+      output_append(laser_on);
+      output_append("G1 X" + sixcoords[2] + " Y" + sixcoords[3] + " F" + drawspeed);
+      output_append("G1 X" + sixcoords[4] + " Y" + sixcoords[5] + " F" + drawspeed);
+      output_append(laser_off);
+    } else {
+      output_append("G1" + zdn + " F" + vertical);
+      output_append("G1 X" + sixcoords[2] + " Y" + sixcoords[3] + " F" + drawspeed);
+      output_append("G1 X" + sixcoords[4] + " Y" + sixcoords[5] + " F" + drawspeed);
+      output_append("G0" + zup + " F" + vertical);
+    }
   }
   
-  function draw_grid(xmin, ymin, xmax, ymax, cell_size, zup, zdn, rapid, vertical, drawspeed) {
+  function draw_grid(xmin, ymin, xmax, ymax, cell_size, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off) {
+    laser_mode = laser_mode || false;
     // Draw vertical lines (parallel to Y axis)
     for (var x = xmin; x <= xmax; x += cell_size) {
-      output_append("G0 X" + x.toFixed(3) + " Y" + ymin.toFixed(3) + zup + " F" + rapid);
-      output_append("G1" + zdn + " F" + vertical);
-      output_append("G1 X" + x.toFixed(3) + " Y" + ymax.toFixed(3) + zdn + " F" + drawspeed);
-      output_append("G0" + zup + " F" + vertical);
+      if (laser_mode) {
+        output_append("G0 X" + x.toFixed(3) + " Y" + ymin.toFixed(3) + " F" + rapid);
+        output_append(laser_on);
+        output_append("G1 X" + x.toFixed(3) + " Y" + ymax.toFixed(3) + " F" + drawspeed);
+        output_append(laser_off);
+      } else {
+        output_append("G0 X" + x.toFixed(3) + " Y" + ymin.toFixed(3) + zup + " F" + rapid);
+        output_append("G1" + zdn + " F" + vertical);
+        output_append("G1 X" + x.toFixed(3) + " Y" + ymax.toFixed(3) + zdn + " F" + drawspeed);
+        output_append("G0" + zup + " F" + vertical);
+      }
     }
     
     // Draw horizontal lines (parallel to X axis)
     for (var y = ymin; y <= ymax; y += cell_size) {
-      output_append("G0 X" + xmin.toFixed(3) + " Y" + y.toFixed(3) + zup + " F" + rapid);
-      output_append("G1" + zdn + " F" + vertical);
-      output_append("G1 X" + xmax.toFixed(3) + " Y" + y.toFixed(3) + zdn + " F" + drawspeed);
-      output_append("G0" + zup + " F" + vertical);
+      if (laser_mode) {
+        output_append("G0 X" + xmin.toFixed(3) + " Y" + y.toFixed(3) + " F" + rapid);
+        output_append(laser_on);
+        output_append("G1 X" + xmax.toFixed(3) + " Y" + y.toFixed(3) + " F" + drawspeed);
+        output_append(laser_off);
+      } else {
+        output_append("G0 X" + xmin.toFixed(3) + " Y" + y.toFixed(3) + zup + " F" + rapid);
+        output_append("G1" + zdn + " F" + vertical);
+        output_append("G1 X" + xmax.toFixed(3) + " Y" + y.toFixed(3) + zdn + " F" + drawspeed);
+        output_append("G0" + zup + " F" + vertical);
+      }
     }
   }
   
@@ -898,6 +973,8 @@ Questions, suggestions, feature requests are welcome.
     document.getElementById('output').innerHTML = "";
     
     var zero = $("input[name=zero]").prop('checked');
+    var laser_mode = $("input[name=laser_mode]").prop('checked');
+    var laser_power = parseFloat($("input[name=laser_power]").val());
     var pen_d = parseFloat($("input[name=pen_d]").val());
     var pen_u = parseFloat($("input[name=pen_u]").val());
     var rapid = parseFloat($("input[name=rapid]").val());
@@ -943,9 +1020,15 @@ Questions, suggestions, feature requests are welcome.
     }
     
     output_append("; mode: " + mode);
+    output_append("; laser mode: " + laser_mode);
+    if (laser_mode) {
+      output_append("; laser power: " + laser_power);
+    }
     
     output_append("; rapid feedrate: " + rapid + " mm/min");
-    output_append("; raise/lower feedrate: " + vertical + " mm/min");
+    if (!laser_mode) {
+      output_append("; raise/lower feedrate: " + vertical + " mm/min");
+    }
     
     if (mode != "hog") {
       // all non-hog mode use the normal names and include xsize and ysize
@@ -1011,38 +1094,52 @@ Questions, suggestions, feature requests are welcome.
     
     var zup = " Z" + pen_u;
     var zdn = " Z" + pen_d;
+    var laser_on = "M3 S" + laser_power;
+    var laser_off = "M5";
+    
+    if (laser_mode) {
+      output_append(laser_off + " ; ensure laser is off at start");
+    }
     
     if (zero) {
-      output_append("G92 X0 Y0 Z0");
+      if (laser_mode) {
+        output_append("G92 X0 Y0");
+      } else {
+        output_append("G92 X0 Y0 Z0");
+      }
     }
     
     if (mode == "x" || mode == "xy" || mode == "perim") {
-      x_zig(0, xsize, 10, zup, zdn, rapid, vertical, drawspeed);
-      x_zag(0, xsize, 10, zup, zdn, rapid, vertical, drawspeed);
+      x_zig(0, xsize, 10, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
+      x_zag(0, xsize, 10, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
     }
     
     if (mode == "y" || mode == "xy" || mode == "perim") {
-      y_zig(10, 0, ysize, zup, zdn, rapid, vertical, drawspeed);
-      y_zag(10, 0, ysize, zup, zdn, rapid, vertical, drawspeed);
+      y_zig(10, 0, ysize, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
+      y_zag(10, 0, ysize, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
     }
     
     if (mode == "grid") {
-      draw_grid(0, 0, xsize, ysize, cell_size, zup, zdn, rapid, vertical, drawspeed);
+      draw_grid(0, 0, xsize, ysize, cell_size, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
     }
     
     if (mode == "perim") {
-      x_zig(0, xsize, ysize-10, zup, zdn, rapid, vertical, drawspeed);
-      x_zag(0, xsize, ysize-10, zup, zdn, rapid, vertical, drawspeed);
-      y_zig(xsize-10, 0, ysize, zup, zdn, rapid, vertical, drawspeed);
-      y_zag(xsize-10, 0, ysize, zup, zdn, rapid, vertical, drawspeed);
+      x_zig(0, xsize, ysize-10, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
+      x_zag(0, xsize, ysize-10, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
+      y_zig(xsize-10, 0, ysize, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
+      y_zag(xsize-10, 0, ysize, zup, zdn, rapid, vertical, drawspeed, laser_mode, laser_on, laser_off);
     }
     
     if (mode == "squareness") {
-      output_append("G0" + zup + " F" + vertical);
-      double_line([0, 10, 0, 0, 10, 0], zup, zdn, vertical, rapid, drawspeed);
-      double_line([xsize-10, 0, xsize, 0, xsize, 10], zup, zdn, vertical, rapid, drawspeed);
-      double_line([xsize, ysize-10, xsize, ysize, xsize-10, ysize], zup, zdn, vertical, rapid, drawspeed);
-      double_line([10, ysize, 0, ysize, 0, ysize-10], zup, zdn, vertical, rapid, drawspeed);
+      if (laser_mode) {
+        output_append("G0 X0 Y0 F" + rapid);
+      } else {
+        output_append("G0" + zup + " F" + vertical);
+      }
+      double_line([0, 10, 0, 0, 10, 0], zup, zdn, vertical, rapid, drawspeed, laser_mode, laser_on, laser_off);
+      double_line([xsize-10, 0, xsize, 0, xsize, 10], zup, zdn, vertical, rapid, drawspeed, laser_mode, laser_on, laser_off);
+      double_line([xsize, ysize-10, xsize, ysize, xsize-10, ysize], zup, zdn, vertical, rapid, drawspeed, laser_mode, laser_on, laser_off);
+      double_line([10, ysize, 0, ysize, 0, ysize-10], zup, zdn, vertical, rapid, drawspeed, laser_mode, laser_on, laser_off);
       // after last 'L' shape pen is up
       output_append('G0 X0 Y0 F' + rapid);
     }
@@ -1201,6 +1298,11 @@ Questions, suggestions, feature requests are welcome.
         alert("orientation must be X or Y");
         return;
       }
+    }
+    
+    // Ensure laser is off at end
+    if (laser_mode) {
+      output_append(laser_off + " ; ensure laser is off at end");
     }
     
     // name file <mode>-yyyy-mm-dd-hhmmss.gcode
